@@ -9,7 +9,8 @@ const ReactionSchema = new mongoose.Schema({
   sentiment: { type: String, enum: ['positive', 'negative', 'neutral'] },
   eventId: { type: String, required: true },
   userId: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  eventTimestamp: { type: Number, required: true } // Timestamp in seconds when reaction occurred in video/event
 });
 
 // Create Reaction Model
@@ -41,10 +42,10 @@ const getSentiment = (reaction) => {
 // POST /api/reactions - Submit a reaction
 router.post('/reactions', async (req, res) => {
   try {
-    const { reaction, eventId, userId } = req.body;
+    const { reaction, eventId, userId, eventTimestamp } = req.body;
 
-    if (!reaction || !eventId || !userId) {
-      return res.status(400).json({ message: 'Reaction, eventId and userId are required' });
+    if (!reaction || !eventId || !userId || eventTimestamp === undefined) {
+      return res.status(400).json({ message: 'Reaction, eventId, userId and eventTimestamp are required' });
     }
 
     const sentiment = getSentiment(reaction);
@@ -55,7 +56,8 @@ router.post('/reactions', async (req, res) => {
       sentiment,
       eventId,
       userId,
-      timestamp: new Date()
+      timestamp: new Date(),
+      eventTimestamp
     });
     await newReaction.save();
 
@@ -134,7 +136,7 @@ router.get('/reactions/event/:eventId', async (req, res) => {
     const { eventId } = req.params;
     
     const eventReactions = await Reaction.find({ eventId })
-      .sort({ timestamp: -1 });
+      .sort({ eventTimestamp: 1 }); // Sort by event timestamp ascending
     
     return res.status(200).json(eventReactions);
   } catch (error) {
